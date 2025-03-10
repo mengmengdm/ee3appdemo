@@ -3,68 +3,79 @@ package com.example.ee3demo;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.util.DisplayMetrics;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
-import androidx.activity.result.ActivityResultLauncher;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
-import com.journeyapps.barcodescanner.ScanContract;
-import com.journeyapps.barcodescanner.ScanOptions;
+import com.journeyapps.barcodescanner.DecoratedBarcodeView;
+import com.journeyapps.barcodescanner.BarcodeCallback;
+import com.journeyapps.barcodescanner.BarcodeResult;
+import com.journeyapps.barcodescanner.Size;
 
 public class ScanFragment extends Fragment {
     private TextView resultTextView;
+    private DecoratedBarcodeView barcodeView;
     private static final int CAMERA_PERMISSION_REQUEST_CODE = 100;
 
-    private final ActivityResultLauncher<ScanOptions> barcodeLauncher = registerForActivityResult(new ScanContract(),
-            result -> {
-                if(result.getContents() == null) {
-                    Toast.makeText(getActivity(), "Scan cancelled", Toast.LENGTH_LONG).show();
-                } else {
-                    // Handle the scan result
-                    resultTextView.setText("Scan result: " + result.getContents());
-                }
-            });
+    private BarcodeCallback callback = new BarcodeCallback() {
+        @Override
+        public void barcodeResult(BarcodeResult result) {
+            if (result.getText() != null) {
+                resultTextView.setText("Scan result: " + result.getText());
+            }
+        }
+    };
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                            Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_scan, container, false);
 
-        Button scanButton = view.findViewById(R.id.button_scan);
         resultTextView = view.findViewById(R.id.text_scan_result);
+        barcodeView = view.findViewById(R.id.barcode_scanner);
 
-        scanButton.setOnClickListener(v -> {
-            // Check for camera permission
-            if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA)
-                    != PackageManager.PERMISSION_GRANTED) {
-                // Request camera permission
-                ActivityCompat.requestPermissions(requireActivity(),
-                        new String[]{Manifest.permission.CAMERA},
-                        CAMERA_PERMISSION_REQUEST_CODE);
-            } else {
-                // Start scanning
-                startScanning();
-            }
-        });
+        // Set scanner frame size based on screen dimensions
+        DisplayMetrics displayMetrics = new DisplayMetrics();
+        requireActivity().getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
+        int screenWidth = displayMetrics.widthPixels;
+        int screenHeight = displayMetrics.heightPixels;
+        
+        int frameWidth = (int) (screenWidth * 0.8); // 80% of screen width
+        int frameHeight = (int) (screenHeight * 0.5); // 50% of screen height
+        barcodeView.getBarcodeView().setFramingRectSize(new Size(frameWidth, frameHeight));
+
+        // Check camera permission
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(requireActivity(),
+                    new String[]{Manifest.permission.CAMERA},
+                    CAMERA_PERMISSION_REQUEST_CODE);
+        } else {
+            startScanning();
+        }
 
         return view;
     }
 
     private void startScanning() {
-        ScanOptions options = new ScanOptions()
-                .setDesiredBarcodeFormats(ScanOptions.QR_CODE)
-                .setPrompt("Scan a QR Code")
-                .setCameraId(0)
-                .setBeepEnabled(true)
-                .setBarcodeImageEnabled(true)
-                .setOrientationLocked(false);
-        
-        barcodeLauncher.launch(options);
+        barcodeView.decodeContinuous(callback);
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        barcodeView.resume();
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        barcodeView.pause();
     }
 
     @Override
@@ -73,7 +84,7 @@ public class ScanFragment extends Fragment {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 startScanning();
             } else {
-                Toast.makeText(getActivity(), "Camera permission is required", Toast.LENGTH_LONG).show();
+                Toast.makeText(getActivity(), "Camera permission is required for scanning", Toast.LENGTH_LONG).show();
             }
         }
     }
