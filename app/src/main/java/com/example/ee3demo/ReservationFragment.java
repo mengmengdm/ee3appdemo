@@ -10,7 +10,7 @@ public class ReservationFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                            Bundle savedInstanceState) {
-        // 将在后续实现具体的预约页面布局
+        // Reservation page layout will be implemented later
         return inflater.inflate(R.layout.fragment_reservation, container, false);
     }
 } 

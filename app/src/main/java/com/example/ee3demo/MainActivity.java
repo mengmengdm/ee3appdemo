@@ -37,7 +37,7 @@ public class MainActivity extends AppCompatActivity {
             return true;
         });
 
-        // 设置默认选中的页面
+        // Set default selected page
         bottomNavigationView.setSelectedItemId(R.id.navigation_home);
     }
 }
